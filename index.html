@@ -14,7 +14,7 @@
     .btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
     button { background-color: #ecfdf5; border: 2px solid #6ee7b7; color: #065f46; padding: 12px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
     button:hover, button.selected { background-color: #10b981; color: white; border-color: #059669; }
-    .submit-btn { background-color: #f59e0b; color: white; border: none; width: 100%; padding: 16px; font-size: 1.2rem; margin-top: 20px; border-radius: 10px; }
+    .submit-btn { background-color: #f59e0b; color: white; border: none; width: 100%; padding: 16px; font-size: 1.2rem; margin-top: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); }
     select, input[type="text"] { width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #6ee7b7; background-color: #fff; margin-top: 10px; box-sizing: border-box; }
     .train-scroll-view { max-height: 60vh; overflow-y: auto; background: #e5e7eb; padding: 15px; border-radius: 10px; margin-top: 15px; border: 3px solid #9ca3af;}
     .train-direction-hint { text-align: center; font-weight: bold; margin-bottom: 15px; color: #dc2626; background: #fecaca; padding: 8px; border-radius: 6px; }
@@ -28,12 +28,12 @@
     #previewImg { max-width: 100%; border-radius: 8px; display: none; margin-top: 10px; }
     #loading { display: none; text-align: center; font-weight: bold; color: #059669; margin-top: 15px; font-size: 1.1rem; }
     
-    /* 其他選項隱藏區塊 */
-    #other-input-container { display: none; margin-top: 15px; animation: fadeIn 0.3s ease-out; }
+    /* 隱藏的動態輸入區塊 */
+    #other-input-container, #transfer-input-container { display: none; margin-top: 15px; padding: 15px; background: #ecfeff; border-radius: 8px; border: 2px solid #67e8f9; animation: fadeIn 0.3s ease-out; }
   </style>
 </head>
 <body>
-  <h1>🚉 鐵道轉乘資訊踏查系統</h1>
+  <h1>🚉 全台鐵道轉乘資訊踏查系統</h1>
   
   <div id="step-system" class="step-container active">
     <h3>1. 選擇鐵路系統</h3>
@@ -76,12 +76,18 @@
       <button onclick="selectFacility('無障礙電梯', this)">電梯</button>
       <button onclick="selectFacility('同月台轉乘', this)">同月台轉乘</button>
       <button onclick="selectFacility('一般出口', this)">直接出站</button>
-      <button onclick="selectFacility('廁所', this)">廁所</button>
       <button onclick="selectFacility('其他', this)" style="border-style: dashed;">其他 (手動輸入)</button>
     </div>
     
+    <div id="transfer-input-container">
+      <h4 style="margin: 0 0 10px 0; color: #0e7490;">🔄 轉乘對面哪一條線？</h4>
+      <input type="text" id="transfer-line-input" placeholder="轉乘路線 (例如：橘線)">
+      <input type="text" id="transfer-dir-input" placeholder="轉乘方向 (例如：往 大寮)" style="margin-top: 10px;">
+    </div>
+
     <div id="other-input-container">
-      <input type="text" id="other-facility-input" placeholder="請輸入設施名稱 (例如：往 1 號出口通道)">
+      <h4 style="margin: 0 0 10px 0; color: #0e7490;">✏️ 請描述設施</h4>
+      <input type="text" id="other-facility-input" placeholder="設施名稱 (例如：往 1 號出口通道)">
     </div>
 
     <div class="photo-area">
@@ -94,10 +100,9 @@
   </div>
 
   <script>
-    // ⚠️ 記得貼上你的 Google Apps Script 網址
-    const GAS_URL = "你的_GAS_網址_貼在這裡";
+    // ⚠️⚠️⚠️ 記得貼上你的 Google Apps Script 網址 ⚠️⚠️⚠️
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyv-JhQ2iLs2d6JLQDO5HwgylKXId87parbsKTAR9Hj1D5MC_uU0qvOkMt53CWIHaqN/exec";
 
-    // ＝＝＝＝＝ 站點資料庫 ＝＝＝＝＝
     const railwaySystemData = {
       "高鐵 (THSR)": { "全線": ["南港", "台北", "板橋", "桃園", "新竹", "苗栗", "台中", "彰化", "雲林", "嘉義", "台南", "左營"] },
       "台鐵 (TRA)": {
@@ -281,17 +286,23 @@
       }
     }
 
-    // 處理設施選擇邏輯 (新增其他選項判斷)
+    // 更新：處理不同設施按鈕的顯示邏輯
     function selectFacility(fac, btnElement) {
       highlightBtn(document.getElementById("facility-btns"), btnElement);
       const otherContainer = document.getElementById("other-input-container");
+      const transferContainer = document.getElementById("transfer-input-container");
       
+      // 先把兩個隱藏區塊都收起來
+      otherContainer.style.display = "none";
+      transferContainer.style.display = "none";
+      surveyData.facility = ""; // 暫時清空
+
       if (fac === '其他') {
-        otherContainer.style.display = "block"; // 顯示文字框
-        surveyData.facility = ""; // 暫時清空
+        otherContainer.style.display = "block";
+      } else if (fac === '同月台轉乘') {
+        transferContainer.style.display = "block";
       } else {
-        otherContainer.style.display = "none"; // 隱藏文字框
-        surveyData.facility = fac; // 紀錄標準設施
+        surveyData.facility = fac; 
       }
     }
 
@@ -308,15 +319,28 @@
     }
 
     function submitData() {
-      // 處理「其他」選項的文字輸入
       const otherContainer = document.getElementById("other-input-container");
       const otherInput = document.getElementById("other-facility-input");
+      const transferContainer = document.getElementById("transfer-input-container");
+      const transferLine = document.getElementById("transfer-line-input");
+      const transferDir = document.getElementById("transfer-dir-input");
+
+      // 判斷是否選擇了「其他」並擷取文字
       if (otherContainer.style.display === "block") {
         if (!otherInput.value.trim()) {
           alert("⚠️ 你選擇了「其他」，請記得在下方欄位輸入設施名稱喔！");
           return;
         }
         surveyData.facility = "其他：" + otherInput.value.trim();
+      } 
+      // 判斷是否選擇了「同月台轉乘」並擷取路線與方向
+      else if (transferContainer.style.display === "block") {
+        if (!transferLine.value.trim()) {
+          alert("⚠️ 請至少輸入要轉乘的「路線」名稱！");
+          return;
+        }
+        // 將路線和方向組合成一個字串存進資料庫
+        surveyData.facility = `同月台轉乘：${transferLine.value.trim()} (${transferDir.value.trim() || '未指定方向'})`;
       }
 
       if (!surveyData.station || !surveyData.car || !surveyData.door || !surveyData.facility) {
@@ -325,6 +349,7 @@
       if (GAS_URL.includes("你的_GAS_網址_貼在這裡")) {
         alert("🛑 系統錯誤：請先在程式碼中貼上你專屬的 Google Apps Script 網址！"); return;
       }
+      
       document.getElementById("loading").style.display = "block";
       fetch(GAS_URL, {
         method: 'POST', body: JSON.stringify(surveyData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
