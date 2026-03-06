@@ -15,7 +15,7 @@
     button { background-color: #ecfdf5; border: 2px solid #6ee7b7; color: #065f46; padding: 12px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
     button:hover, button.selected { background-color: #10b981; color: white; border-color: #059669; }
     .submit-btn { background-color: #f59e0b; color: white; border: none; width: 100%; padding: 16px; font-size: 1.2rem; margin-top: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); }
-    select, input[type="text"] { width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #6ee7b7; background-color: #fff; margin-top: 10px; box-sizing: border-box; }
+    select, input[type="text"], input[type="number"] { width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #6ee7b7; background-color: #fff; margin-top: 10px; box-sizing: border-box; }
     .train-scroll-view { max-height: 60vh; overflow-y: auto; background: #e5e7eb; padding: 15px; border-radius: 10px; margin-top: 15px; border: 3px solid #9ca3af;}
     .train-direction-hint { text-align: center; font-weight: bold; margin-bottom: 15px; color: #dc2626; background: #fecaca; padding: 8px; border-radius: 6px; }
     .train-car { background: white; border: 3px solid #6b7280; border-radius: 10px; margin-bottom: 20px; padding: 15px; }
@@ -30,6 +30,9 @@
     
     /* 隱藏的動態輸入區塊 */
     #other-input-container, #transfer-input-container { display: none; margin-top: 15px; padding: 15px; background: #ecfeff; border-radius: 8px; border: 2px solid #67e8f9; animation: fadeIn 0.3s ease-out; }
+    
+    /* 自訂車型輸入區塊 */
+    #custom-train-container { display: none; margin-top: 15px; padding: 15px; background: #fffbeb; border-radius: 8px; border: 2px dashed #f59e0b; animation: fadeIn 0.3s ease-out; }
   </style>
 </head>
 <body>
@@ -56,6 +59,22 @@
     <div class="btn-grid" id="dir-btns"></div>
     <h4 style="margin-top: 20px; color: #047857;">選擇列車型號</h4>
     <div id="train-type-btns" class="btn-grid"></div>
+    
+    <div id="custom-train-container">
+      <h4 style="margin: 0 0 10px 0; color: #b45309;">🛠️ 自訂車型設定</h4>
+      <input type="text" id="custom-train-name" placeholder="車型名稱 (例如：鳴日號、短編組區間)">
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <div style="flex: 1;">
+          <label style="font-size: 0.9rem; color: #78350f;">車廂總節數</label>
+          <input type="number" id="custom-train-cars" placeholder="例: 5" min="1" max="30" style="margin-top: 5px;">
+        </div>
+        <div style="flex: 1;">
+          <label style="font-size: 0.9rem; color: #78350f;">單側車門數</label>
+          <input type="number" id="custom-train-doors" placeholder="例: 2" min="1" max="10" style="margin-top: 5px;">
+        </div>
+      </div>
+      <button onclick="generateCustomTrain()" style="width: 100%; margin-top: 15px; background-color: #f59e0b; color: white; border: none;">⚙️ 產生專屬車廂選位圖</button>
+    </div>
   </div>
   
   <div id="step-train-ui" class="step-container">
@@ -148,13 +167,15 @@
       "綠線 (G)": ["往 北屯總站", "往 高鐵台中站"]
     };
 
-    const trainSpecs = {
-      "EMU900 (最美區間)": { cars: 10, doors: 3 },
-      "EMU800/700 (微笑區間)": { cars: 8, doors: 3 },
-      "EMU3000 (新自強)": { cars: 12, doors: 2 },
-      "普悠瑪 / 太魯閣": { cars: 8, doors: 1 },
-      "推拉式自強 (PP)": { cars: 12, doors: 1 },
-      "700T (高鐵)": { cars: 12, doors: 2 },
+    // 列車圖鑑升級版 (加上節數提示)
+    let trainSpecs = {
+      "EMU900 (最美區間, 10節)": { cars: 10, doors: 3 },
+      "EMU800/700 (微笑區間, 8節)": { cars: 8, doors: 3 },
+      "EMU500/600 (短區間, 4節)": { cars: 4, doors: 3 }, // 新增這台台鐵常見車型
+      "EMU3000 (新自強, 12節)": { cars: 12, doors: 2 },
+      "普悠瑪 / 太魯閣 (8節)": { cars: 8, doors: 1 },
+      "推拉式自強 PP (12節)": { cars: 12, doors: 1 },
+      "700T (高鐵, 12節)": { cars: 12, doors: 2 },
       "北捷高運量 (6節)": { cars: 6, doors: 4 },
       "北捷文湖線 (4節)": { cars: 4, doors: 2 },
       "高捷重軌 (3節)": { cars: 3, doors: 4 },
@@ -235,9 +256,9 @@
       let availableTypes = [];
       
       if (surveyData.system.includes("台鐵")) {
-        availableTypes = ["EMU900 (最美區間)", "EMU800/700 (微笑區間)", "EMU3000 (新自強)", "普悠瑪 / 太魯閣", "推拉式自強 (PP)"];
+        availableTypes = ["EMU900 (最美區間, 10節)", "EMU800/700 (微笑區間, 8節)", "EMU500/600 (短區間, 4節)", "EMU3000 (新自強, 12節)", "普悠瑪 / 太魯閣 (8節)", "推拉式自強 PP (12節)"];
       } else if (surveyData.system.includes("高鐵")) {
-        availableTypes = ["700T (高鐵)"];
+        availableTypes = ["700T (高鐵, 12節)"];
       } else if (surveyData.system.includes("台北捷運")) {
         availableTypes = surveyData.route.includes("文湖") ? ["北捷文湖線 (4節)"] : ["北捷高運量 (6節)"];
       } else if (surveyData.system.includes("高雄捷運")) {
@@ -247,20 +268,57 @@
       } else if (surveyData.system.includes("台中捷運")) {
         availableTypes = ["中捷綠線 (2節)"];
       }
+      
+      // 所有系統最後都掛上這顆萬用自訂按鈕
+      availableTypes.push("自訂車型 ✍️");
 
       availableTypes.forEach(type => {
         let btn = document.createElement("button");
         btn.innerText = type;
+        if (type === "自訂車型 ✍️") btn.style.borderStyle = "dashed"; // 讓自訂按鈕看起來不一樣
+        
         btn.onclick = (e) => {
           if(!surveyData.direction) { alert("⚠️ 請先選擇上方的搭乘方向喔！"); return; }
-          surveyData.trainType = type; highlightBtn(typeContainer, e.target); buildTrainUI(type); 
+          highlightBtn(typeContainer, e.target);
+          
+          if (type === "自訂車型 ✍️") {
+            // 顯示自訂輸入框，隱藏原本的火車圖
+            document.getElementById("custom-train-container").style.display = "block";
+            document.getElementById("step-train-ui").classList.remove("active");
+          } else {
+            document.getElementById("custom-train-container").style.display = "none";
+            surveyData.trainType = type; 
+            buildTrainUI(type); 
+          }
         };
         typeContainer.appendChild(btn);
       });
     }
 
+    // 處理自訂車型的動態生成
+    function generateCustomTrain() {
+      const nameInput = document.getElementById("custom-train-name").value.trim() || "自訂神秘列車";
+      const carsInput = parseInt(document.getElementById("custom-train-cars").value);
+      const doorsInput = parseInt(document.getElementById("custom-train-doors").value);
+
+      if (!carsInput || !doorsInput || carsInput <= 0 || doorsInput <= 0) {
+        alert("⚠️ 請輸入有效的車廂節數與車門數量喔！");
+        return;
+      }
+
+      // 將使用者自訂的資料寫入字典中，並呼叫建構畫面的函數
+      const customKey = `${nameInput} (${carsInput}節)`;
+      trainSpecs[customKey] = { cars: carsInput, doors: doorsInput };
+      surveyData.trainType = customKey;
+      
+      buildTrainUI(customKey);
+    }
+
     function buildTrainUI(trainType) {
       document.getElementById("step-train-ui").classList.add("active");
+      // 生成後畫面自動滾動到火車頭
+      document.getElementById("step-train-ui").scrollIntoView({ behavior: 'smooth' });
+      
       const container = document.getElementById("train-cars-container");
       container.innerHTML = ""; 
       const spec = trainSpecs[trainType];
@@ -286,16 +344,14 @@
       }
     }
 
-    // 更新：處理不同設施按鈕的顯示邏輯
     function selectFacility(fac, btnElement) {
       highlightBtn(document.getElementById("facility-btns"), btnElement);
       const otherContainer = document.getElementById("other-input-container");
       const transferContainer = document.getElementById("transfer-input-container");
       
-      // 先把兩個隱藏區塊都收起來
       otherContainer.style.display = "none";
       transferContainer.style.display = "none";
-      surveyData.facility = ""; // 暫時清空
+      surveyData.facility = ""; 
 
       if (fac === '其他') {
         otherContainer.style.display = "block";
@@ -325,7 +381,6 @@
       const transferLine = document.getElementById("transfer-line-input");
       const transferDir = document.getElementById("transfer-dir-input");
 
-      // 判斷是否選擇了「其他」並擷取文字
       if (otherContainer.style.display === "block") {
         if (!otherInput.value.trim()) {
           alert("⚠️ 你選擇了「其他」，請記得在下方欄位輸入設施名稱喔！");
@@ -333,13 +388,11 @@
         }
         surveyData.facility = "其他：" + otherInput.value.trim();
       } 
-      // 判斷是否選擇了「同月台轉乘」並擷取路線與方向
       else if (transferContainer.style.display === "block") {
         if (!transferLine.value.trim()) {
           alert("⚠️ 請至少輸入要轉乘的「路線」名稱！");
           return;
         }
-        // 將路線和方向組合成一個字串存進資料庫
         surveyData.facility = `同月台轉乘：${transferLine.value.trim()} (${transferDir.value.trim() || '未指定方向'})`;
       }
 
