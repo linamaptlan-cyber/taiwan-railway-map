@@ -15,7 +15,7 @@
     button { background-color: #ecfdf5; border: 2px solid #6ee7b7; color: #065f46; padding: 12px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
     button:hover, button.selected { background-color: #10b981; color: white; border-color: #059669; }
     .submit-btn { background-color: #f59e0b; color: white; border: none; width: 100%; padding: 16px; font-size: 1.2rem; margin-top: 20px; border-radius: 10px; }
-    select { width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #6ee7b7; background-color: #fff; margin-top: 10px; }
+    select, input[type="text"] { width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #6ee7b7; background-color: #fff; margin-top: 10px; box-sizing: border-box; }
     .train-scroll-view { max-height: 60vh; overflow-y: auto; background: #e5e7eb; padding: 15px; border-radius: 10px; margin-top: 15px; border: 3px solid #9ca3af;}
     .train-direction-hint { text-align: center; font-weight: bold; margin-bottom: 15px; color: #dc2626; background: #fecaca; padding: 8px; border-radius: 6px; }
     .train-car { background: white; border: 3px solid #6b7280; border-radius: 10px; margin-bottom: 20px; padding: 15px; }
@@ -27,6 +27,9 @@
     input[type="file"] { display: block; margin-top: 10px; width: 100%; }
     #previewImg { max-width: 100%; border-radius: 8px; display: none; margin-top: 10px; }
     #loading { display: none; text-align: center; font-weight: bold; color: #059669; margin-top: 15px; font-size: 1.1rem; }
+    
+    /* 其他選項隱藏區塊 */
+    #other-input-container { display: none; margin-top: 15px; animation: fadeIn 0.3s ease-out; }
   </style>
 </head>
 <body>
@@ -74,8 +77,13 @@
       <button onclick="selectFacility('同月台轉乘', this)">同月台轉乘</button>
       <button onclick="selectFacility('一般出口', this)">直接出站</button>
       <button onclick="selectFacility('廁所', this)">廁所</button>
-      <button onclick="selectFacility('AED', this)">AED</button>
+      <button onclick="selectFacility('其他', this)" style="border-style: dashed;">其他 (手動輸入)</button>
     </div>
+    
+    <div id="other-input-container">
+      <input type="text" id="other-facility-input" placeholder="請輸入設施名稱 (例如：往 1 號出口通道)">
+    </div>
+
     <div class="photo-area">
       <h4 style="margin: 0; color: #374151;">📸 現場照片 (選填)</h4>
       <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="previewPhoto(event)">
@@ -87,9 +95,9 @@
 
   <script>
     // ⚠️ 記得貼上你的 Google Apps Script 網址
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyv-JhQ2iLs2d6JLQDO5HwgylKXId87parbsKTAR9Hj1D5MC_uU0qvOkMt53CWIHaqN/exec";
+    const GAS_URL = "你的_GAS_網址_貼在這裡";
 
-    // ＝＝＝＝＝ 站點資料庫 (包含高雄捷運最新圖資) ＝＝＝＝＝
+    // ＝＝＝＝＝ 站點資料庫 ＝＝＝＝＝
     const railwaySystemData = {
       "高鐵 (THSR)": { "全線": ["南港", "台北", "板橋", "桃園", "新竹", "苗栗", "台中", "彰化", "雲林", "嘉義", "台南", "左營"] },
       "台鐵 (TRA)": {
@@ -120,7 +128,6 @@
       }
     };
 
-    // ＝＝＝＝＝ 路線專屬端點方向資料庫 ＝＝＝＝＝
     const directionData = {
       "台鐵 (TRA)": ["北上 / 順行", "南下 / 逆行"],
       "高鐵 (THSR)": ["北上", "南下"],
@@ -194,7 +201,6 @@
       surveyData.station = document.getElementById("station-select").value;
       document.getElementById("step-dir-train").classList.add("active");
       
-      // 動態生成「搭乘方向」按鈕 (判斷是台鐵/高鐵還是捷運)
       const dirContainer = document.getElementById("dir-btns");
       dirContainer.innerHTML = "";
       surveyData.direction = ""; 
@@ -202,7 +208,7 @@
       let dirs = [];
       if (surveyData.system.includes("台鐵")) dirs = directionData["台鐵 (TRA)"];
       else if (surveyData.system.includes("高鐵")) dirs = directionData["高鐵 (THSR)"];
-      else dirs = directionData[surveyData.route] || ["去程", "回程"]; // 捷運端點站
+      else dirs = directionData[surveyData.route] || ["去程", "回程"]; 
 
       dirs.forEach(d => {
         let btn = document.createElement("button");
@@ -275,8 +281,18 @@
       }
     }
 
+    // 處理設施選擇邏輯 (新增其他選項判斷)
     function selectFacility(fac, btnElement) {
-      surveyData.facility = fac; highlightBtn(document.getElementById("facility-btns"), btnElement);
+      highlightBtn(document.getElementById("facility-btns"), btnElement);
+      const otherContainer = document.getElementById("other-input-container");
+      
+      if (fac === '其他') {
+        otherContainer.style.display = "block"; // 顯示文字框
+        surveyData.facility = ""; // 暫時清空
+      } else {
+        otherContainer.style.display = "none"; // 隱藏文字框
+        surveyData.facility = fac; // 紀錄標準設施
+      }
     }
 
     function previewPhoto(event) {
@@ -292,6 +308,17 @@
     }
 
     function submitData() {
+      // 處理「其他」選項的文字輸入
+      const otherContainer = document.getElementById("other-input-container");
+      const otherInput = document.getElementById("other-facility-input");
+      if (otherContainer.style.display === "block") {
+        if (!otherInput.value.trim()) {
+          alert("⚠️ 你選擇了「其他」，請記得在下方欄位輸入設施名稱喔！");
+          return;
+        }
+        surveyData.facility = "其他：" + otherInput.value.trim();
+      }
+
       if (!surveyData.station || !surveyData.car || !surveyData.door || !surveyData.facility) {
         alert("⚠️ 請確認「車站、車門、對應設施」皆已選擇完畢！"); return;
       }
@@ -320,4 +347,3 @@
   </script>
 </body>
 </html>
-
